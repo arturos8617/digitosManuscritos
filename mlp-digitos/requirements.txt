@@ -1,0 +1,21 @@
+# requirements.txt
+
+# Cálculo matricial y backprop
+numpy>=1.24.0
+
+# Manejo de imágenes (entrada desde canvas)
+pillow>=10.0.0
+
+# Servidor web (API /predict)
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# Validación de requests
+pydantic>=2.6.0
+python-multipart>=0.0.9
+
+# Dataset MNIST (solo para descarga desde OpenML, opcional)
+scikit-learn>=1.4.0
+
+# Tests (opcional, para correr pytest)
+pytest>=8.0.0
