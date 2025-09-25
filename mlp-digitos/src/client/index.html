@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MLP Dígitos</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 24px auto; }
+    #canvas { border: 2px solid #333; touch-action: none; }
+    .row { display:flex; gap:12px; align-items:center; margin:12px 0; }
+    button { padding:8px 12px; }
+  </style>
+</head>
+<body>
+  <h1>Clasificación de dígitos (MLP)</h1>
+  <canvas id="canvas" width="224" height="224"></canvas>
+  <div class="row">
+    <button id="clear">Limpiar</button>
+    <button id="predict">Predecir</button>
+    <div id="out"></div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
