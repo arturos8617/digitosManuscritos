@@ -1,7 +1,14 @@
-fastapi
-uvicorn
-pillow
-numpy
-scikit-learn
-pydantic
-python-multipart
+# requirements.txt
+
+numpy>=1.24.0
+pillow>=10.0.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.6.0
+python-multipart>=0.0.9
+
+# Optional: only needed if you want to download MNIST via OpenML
+scikit-learn>=1.4.0
+
+# Optional: for running the included tests
+pytest>=8.0.0

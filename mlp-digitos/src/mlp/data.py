@@ -6,8 +6,10 @@ from sklearn.datasets import fetch_openml
 
 
 def one_hot(y: np.ndarray, num_classes: int = 10) -> np.ndarray:
-    out = np.zeros((y.size, num_classes), dtype=np.float32)
-    out[np.arange(y.size), y.astype(int)] = 1.0
+    y = y.astype(int).ravel()
+    m = y.size
+    out = np.zeros((num_classes, m), dtype=np.float32)  # (10, batch)
+    out[y, np.arange(m)] = 1.0
     return out
 
 
