@@ -3,8 +3,10 @@ import io
 from pathlib import Path
 import numpy as np
 from PIL import Image
+from ..mlp.data import preprocess_pil_for_mlp
 from ..mlp.model import MLP
 from ..mlp.templates import load_templates
+
 
 class Inference:
     def __init__(self, weights_path='weights.npz', templates_path='templates.npz'):
@@ -23,23 +25,7 @@ class Inference:
 
     @staticmethod
     def _img_to_vector(img: Image.Image) -> np.ndarray:
-        img = img.convert('L').resize((28, 28))
-        x = np.asarray(img, dtype=np.float32) / 255.0
-
-        # Invertir (MNIST: dígito claro sobre fondo oscuro)
-        x = 1.0 - x
-
-        # Contraste + umbral suave (lo que ya probaste)
-        x = np.clip(x, 0, 1)
-        x = x ** 0.7
-        x = (x > 0.2).astype(np.float32) * x
-
-        max_val = np.max(x)
-        if max_val > 0:
-            x = x / max_val
-
-        x = x.reshape(1, 28 * 28)
-        return x
+        return preprocess_pil_for_mlp(img).reshape(1, 28 * 28)
 
     @staticmethod
     def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:

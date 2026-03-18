@@ -9,6 +9,7 @@ const OUT_H = 28;
 export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const c = canvasRef.current;
@@ -73,25 +74,25 @@ export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
 
   function getProcessedB64() {
     const c = canvasRef.current;
-  
+
     const tmp = document.createElement("canvas");
     tmp.width = CANVAS_W;
     tmp.height = CANVAS_H;
     const tctx = tmp.getContext("2d", { willReadFrequently: true });
     tctx.drawImage(c, 0, 0);
-  
+
     const imgData = tctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
     const data = imgData.data;
-  
+
     let minX = CANVAS_W, minY = CANVAS_H, maxX = 0, maxY = 0;
     let found = false;
-  
+
     // 1) Bounding box con umbral más estricto (evita ruido)
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i], g = data[i + 1], b = data[i + 2];
       const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-  
-      if (lum < 220) { // antes 240: demasiado permisivo
+
+      if (lum < 220) {
         found = true;
         const idx = i / 4;
         const x = idx % CANVAS_W;
@@ -102,27 +103,25 @@ export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
         if (y > maxY) maxY = y;
       }
     }
-  
+
     if (!found || maxX <= minX || maxY <= minY) return null;
-  
+
     // 2) Padding ligeramente mayor (ayuda con 1,7,9)
     const pad = 10;
     minX = Math.max(0, minX - pad);
     minY = Math.max(0, minY - pad);
     maxX = Math.min(CANVAS_W - 1, maxX + pad);
     maxY = Math.min(CANVAS_H - 1, maxY + pad);
-  
+
     const cropW = maxX - minX + 1;
     const cropH = maxY - minY + 1;
-  
-    // Crop
+
     const crop = document.createElement("canvas");
     crop.width = cropW;
     crop.height = cropH;
     const cctx = crop.getContext("2d");
     cctx.drawImage(c, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
-  
-    // Center in square
+
     const size = Math.max(cropW, cropH);
     const square = document.createElement("canvas");
     square.width = size;
@@ -131,40 +130,30 @@ export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
     sctx.fillStyle = "white";
     sctx.fillRect(0, 0, size, size);
     sctx.drawImage(crop, (size - cropW) / 2, (size - cropH) / 2);
-  
-    // Scale to 28x28
+
     const out = document.createElement("canvas");
     out.width = OUT_W;
     out.height = OUT_H;
     const octx = out.getContext("2d", { willReadFrequently: true });
     octx.imageSmoothingEnabled = true;
     octx.drawImage(square, 0, 0, OUT_W, OUT_H);
-  
-    // 3) Post-procesado en cliente: aumentar contraste rápido
-    // (muy parecido a lo que hace tu infer.py)
+
     const od = octx.getImageData(0, 0, OUT_W, OUT_H);
     const px = od.data;
     for (let i = 0; i < px.length; i += 4) {
       const r = px[i], g = px[i + 1], b = px[i + 2];
-      // luminancia (0=negro, 255=blanco)
       const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-      // convertimos a "tinta" (1=trazo, 0=fondo) aproximado
       let ink = 1.0 - (lum / 255.0);
-      // contraste suave
       ink = Math.pow(Math.max(0, Math.min(1, ink)), 0.7);
-      // umbral suave
       ink = (ink > 0.2) ? ink : 0.0;
-      // regresamos a gris invertido para PNG (negro fondo / blanco tinta no importa,
-      // tu servidor vuelve a invertir; lo importante es que el trazo quede fuerte)
       const outLum = 255 * (1.0 - ink);
       px[i] = px[i + 1] = px[i + 2] = outLum;
       px[i + 3] = 255;
     }
     octx.putImageData(od, 0, 0);
-  
+
     return out.toDataURL("image/png").split(",")[1];
   }
-  
 
   async function predict() {
     onStatus?.("Procesando...");
@@ -186,6 +175,36 @@ export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
     onStatus?.("Listo");
   }
 
+  async function saveSample() {
+    const b64 = getProcessedB64();
+    if (!b64) {
+      onStatus?.("No se detectó trazo para guardar");
+      return;
+    }
+
+    setSaving(true);
+    onStatus?.("Guardando muestra...");
+
+    try {
+      const resp = await fetch("/samples/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_b64: b64, label: targetDigit }),
+      });
+
+      const json = await resp.json();
+      if (!resp.ok) {
+        throw new Error(json.detail || "No se pudo guardar la muestra");
+      }
+
+      onStatus?.(`Muestra guardada para ${json.label}`);
+    } catch (err) {
+      onStatus?.(`Error al guardar: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div>
       <canvas
@@ -202,9 +221,12 @@ export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
         onTouchEnd={endDraw}
       />
 
-      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+      <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
         <button onClick={clear} style={btnStyle}>Limpiar</button>
         <button onClick={predict} style={btnStylePrimary}>Predecir</button>
+        <button onClick={saveSample} style={btnStyleSecondary} disabled={saving}>
+          {saving ? "Guardando..." : "Guardar muestra"}
+        </button>
       </div>
     </div>
   );
@@ -221,4 +243,10 @@ const btnStyle = {
 const btnStylePrimary = {
   ...btnStyle,
   border: "1px solid #222",
+};
+
+const btnStyleSecondary = {
+  ...btnStyle,
+  border: "1px solid #2b6cb0",
+  color: "#2b6cb0",
 };

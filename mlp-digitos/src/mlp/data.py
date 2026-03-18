@@ -1,7 +1,9 @@
 # Carga y normaliza MNIST (0-9). Intenta OpenML; si falla, usa .npz local.
 from __future__ import annotations
 import os
+from pathlib import Path
 import numpy as np
+from PIL import Image
 from sklearn.datasets import fetch_openml
 
 
@@ -11,6 +13,66 @@ def one_hot(y: np.ndarray, num_classes: int = 10) -> np.ndarray:
     out = np.zeros((num_classes, m), dtype=np.float32)  # (10, batch)
     out[y, np.arange(m)] = 1.0
     return out
+
+
+def preprocess_pil_for_mlp(img: Image.Image) -> np.ndarray:
+    """Replica el preprocesado usado en inferencia para alinear datos reales y entrenamiento."""
+    img = img.convert('L').resize((28, 28))
+    x = np.asarray(img, dtype=np.float32) / 255.0
+
+    # Invertir (MNIST: dígito claro sobre fondo oscuro)
+    x = 1.0 - x
+
+    # Contraste + umbral suave
+    x = np.clip(x, 0, 1)
+    x = x ** 0.7
+    x = (x > 0.2).astype(np.float32) * x
+
+    max_val = np.max(x)
+    if max_val > 0:
+        x = x / max_val
+
+    return x.reshape(28 * 28)
+
+
+def load_canvas_samples(samples_dir: str | os.PathLike, dtype=np.float32) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Carga muestras guardadas desde el canvas.
+    Estructura esperada:
+      samples_dir/
+        0/*.png
+        1/*.png
+        ...
+        9/*.png
+    """
+    root = Path(samples_dir)
+    if not root.exists():
+        raise FileNotFoundError(f'No existe el directorio de muestras: {root}')
+
+    X_list: list[np.ndarray] = []
+    y_list: list[int] = []
+
+    for digit_dir in sorted(root.iterdir()):
+        if not digit_dir.is_dir():
+            continue
+        if not digit_dir.name.isdigit():
+            continue
+
+        label = int(digit_dir.name)
+        if not (0 <= label <= 9):
+            continue
+
+        for img_path in sorted(digit_dir.glob('*.png')):
+            with Image.open(img_path) as img:
+                X_list.append(preprocess_pil_for_mlp(img).astype(dtype))
+            y_list.append(label)
+
+    if not X_list:
+        raise RuntimeError(f'No se encontraron PNGs válidos en {root}')
+
+    X = np.stack(X_list, axis=0).astype(dtype)
+    y = np.asarray(y_list, dtype=np.int64)
+    return X, y
 
 
 def load_mnist(normalize: bool = True, dtype=np.float32, seed: int = 42):

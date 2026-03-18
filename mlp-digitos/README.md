@@ -11,14 +11,26 @@ Esto generará el archivo:
 weights.npz
 
 ## Generar plantillas de referencia
-python - <<'PY'
+python - <<'PY2'
 from src.mlp.templates import build_templates
 build_templates("templates.npz")
 print("Plantillas generadas")
-PY
+PY2
 
 Esto generará:
 templates.npz
+
+## Recolectar muestras reales del canvas
+1. Ejecuta backend y frontend.
+2. Dibuja el número objetivo en la app React.
+3. Si el trazo representa bien al objetivo, presiona **Guardar muestra**.
+4. Las muestras se guardan en `canvas_samples/<digito>/*.png`.
+
+## Reentrenar la misma MLP con muestras reales
+python -m src.mlp.train --epochs 15 --hidden 256 --lr 0.1 --canvas-dir canvas_samples --canvas-repeat 3
+
+- `--canvas-dir`: directorio con muestras reales por carpeta (`0` a `9`).
+- `--canvas-repeat`: cuánto peso tendrán esas muestras al mezclarlas con MNIST.
 
 ## Evaluación
 python -m src.mlp.eval --weights weights.npz
@@ -55,4 +67,4 @@ similitud con la plantilla
 
 retroalimentación básica
 
-Puede presionar Nuevo número para continuar practicand
+Puede presionar Nuevo número para continuar practicando.
