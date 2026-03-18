@@ -34,12 +34,22 @@ class PredictRequest(BaseModel):
 @app.post('/predict')
 async def predict(req: PredictRequest):
     t0 = time.time()
+    print("\n === Nueva Peticion ===")
+    print("Target Digit: ", req.target_digit)
+    print("Longitud imagen base64:", len(req.image_b64))
+
     try:
         digit, conf, score = inf.predict_from_base64(req.image_b64, req.target_digit)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     latency = (time.time() - t0) * 1000.0
+    print("Prediccion: ", digit)
+    print("Prediccion: ", conf)
+    print("Prediccion: ", score)
+    print("Prediccion: ", latency)
+    print("\n === FIN Peticion ===")
+    
     store.insert(digit, conf, latency)
 
     # Feedback mínimo (MVP) basado en target + score + conf
