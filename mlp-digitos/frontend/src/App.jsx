@@ -30,7 +30,7 @@ export default function App() {
       </p>
 
       {/* Panel de objetivo */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center", margin: "12px 0" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", margin: "12px 0", flexWrap: "wrap" }}>
         <div style={{ fontSize: 18 }}>
           Escribe el número:{" "}
           <span style={{ fontSize: 28, fontWeight: 800, padding: "2px 10px", border: "1px solid #ddd", borderRadius: 10 }}>
@@ -64,6 +64,10 @@ export default function App() {
 
           <div style={{ marginTop: 10, color: "#666", fontSize: 13 }}>
             Consejos: hazlo grande, centrado y con trazo claro. Para “1” puedes agregar un pequeño gancho arriba (estilo MNIST).
+          </div>
+
+          <div style={{ marginTop: 10, color: "#335", fontSize: 13, background: "#f7f9ff", border: "1px solid #d8e3ff", borderRadius: 10, padding: 10 }}>
+            Usa <b>Guardar muestra</b> cuando el dibujo represente bien al número objetivo. Luego podrás reentrenar la misma MLP con esas muestras reales.
           </div>
         </div>
 
@@ -114,7 +118,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Si tu backend todavía no envía estos campos */}
               {!showEvaluation && (
                 <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
                   Nota: el backend aún no está devolviendo <code>match</code>, <code>similarity_score</code> y <code>feedback</code>.
