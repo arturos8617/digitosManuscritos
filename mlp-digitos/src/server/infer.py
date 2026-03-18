@@ -1,5 +1,6 @@
 import base64
 import io
+from pathlib import Path
 import numpy as np
 from PIL import Image
 from ..mlp.model import MLP
@@ -7,13 +8,18 @@ from ..mlp.templates import load_templates
 
 class Inference:
     def __init__(self, weights_path='weights.npz', templates_path='templates.npz'):
+        weights_path = Path(weights_path)
+        templates_path = Path(templates_path)
+        if not templates_path.is_absolute():
+            templates_path = weights_path.resolve().parent / templates_path
+
         self.model = MLP()
         w = np.load(weights_path)
         self.model.W1, self.model.b1 = w['W1'], w['b1']
         self.model.W2, self.model.b2 = w['W2'], w['b2']
 
         # templates: (10, 784) en [0,1]
-        self.templates = load_templates(templates_path)
+        self.templates = load_templates(str(templates_path))
 
     @staticmethod
     def _img_to_vector(img: Image.Image) -> np.ndarray:
