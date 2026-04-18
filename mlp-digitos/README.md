@@ -68,3 +68,13 @@ similitud con la plantilla
 retroalimentación básica
 
 Puede presionar Nuevo número para continuar practicando.
+
+## Documentación
+- [01 Alcance](docs/01_alcance.md)
+- [02 Modelo matemático](docs/02_modelo_matematico.md)
+- [03 Arquitectura](docs/03_arquitectura.md)
+- [04 UMLs](docs/04_umls.md)
+- [05 Resultados](docs/05_resultados.md)
+- [06 Entrenamiento](docs/06_entrenamiento.md)
+- [07 Compatibilidad](docs/07_compatibilidad.md)
+
