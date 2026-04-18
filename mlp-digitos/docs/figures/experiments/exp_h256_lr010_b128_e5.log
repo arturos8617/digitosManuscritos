@@ -1,0 +1,7 @@
+Epoch 01 | val_acc=0.9017
+Epoch 02 | val_acc=0.9143
+Epoch 03 | val_acc=0.9250
+Epoch 04 | val_acc=0.9406
+Epoch 05 | val_acc=0.9459
+Test acc=0.9417
+Pesos guardados en weights.npz
