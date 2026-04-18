@@ -77,4 +77,6 @@ Puede presionar Nuevo número para continuar practicando.
 - [05 Resultados](docs/05_resultados.md)
 - [06 Entrenamiento](docs/06_entrenamiento.md)
 - [07 Compatibilidad](docs/07_compatibilidad.md)
+- [08 UX](docs/08_ux.md)
+- [10 Mantenimiento y soporte](docs/10_mantenimiento_soporte.md)
 
