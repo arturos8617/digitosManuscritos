@@ -54,10 +54,107 @@ El sistema sigue una arquitectura **cliente-servidor** con tres componentes prin
 
 ---
 
-## 7. Futuras mejoras
-- Integración con TensorFlow/PyTorch para comparar precisión.  
-- Servidor remoto en nube (Render, Railway, etc.).  
-- Persistencia avanzada con registros de usuario.
+## 7. Futuras mejoras (roadmap por fases)
+
+### 7.1 Corto plazo (0-2 sprints)
+
+**Objetivo técnico**  
+Mejorar observabilidad, trazabilidad y experiencia de uso sin alterar la arquitectura base MLP + FastAPI.
+
+**Líneas de trabajo**
+- **Documentación operativa y técnica**
+  - Añadir guía de troubleshooting y decisiones de diseño (ADRs ligeros).
+  - Estandarizar contratos de API con ejemplos de error y éxito por endpoint.
+- **Métricas y monitoreo**
+  - Versionar métricas base por release: accuracy offline, confidence promedio, p50/p95 de latencia.
+  - Crear tablero mínimo (CSV/SQLite + script) para comparar tendencias entre versiones.
+- **UX de inferencia**
+  - Mejorar feedback en frontend (mensajes por nivel de confianza y sugerencias de centrado/grosor).
+  - Añadir estados visuales de carga/error y validación temprana del canvas.
+
+**Cambio esperado en métricas**
+- Reducir tickets/incidencias de uso por ambigüedad de interfaz y errores de entrada.
+- Mejorar estabilidad percibida: menor variabilidad de latencia reportada por usuario.
+- Incrementar confiabilidad de análisis al disponer de línea base consistente entre releases.
+
+**Esfuerzo estimado**  
+**Bajo a medio** (1-2 personas, 1-2 sprints).
+
+**Riesgo principal**  
+Optimizar UX y documentación sin disciplina de medición puede generar mejoras cosméticas no reflejadas en KPIs.
+
+---
+
+### 7.2 Mediano plazo (2-6 sprints)
+
+**Objetivo técnico**  
+Elevar robustez del MLP frente a variaciones reales de escritura y validar comportamiento en entornos heterogéneos.
+
+**Líneas de trabajo**
+- **Data augmentation controlado**
+  - Aplicar rotaciones suaves, traslaciones, variación de grosor/ruido y deformaciones leves.
+  - Mantener experimento reproducible con semillas y configuración versionada.
+- **Calibración de probabilidades**
+  - Evaluar temperatura o métodos de calibración para alinear confidence con probabilidad real.
+  - Ajustar umbrales de decisión para feedback y detección de baja confianza.
+- **Pruebas multi-dispositivo**
+  - Validar captura/inferencia en desktop y móviles (distintas resoluciones y densidades de píxel).
+  - Medir diferencias de latencia, centrado de trazo y tasa de error por tipo de dispositivo.
+
+**Cambio esperado en métricas**
+- Aumento de accuracy/F1 en datos fuera de distribución MNIST-like.
+- Disminución de falsos positivos con confidence alta mal calibrada.
+- Menor brecha de desempeño entre escritorio y móvil (latencia y tasa de acierto).
+
+**Esfuerzo estimado**  
+**Medio** (2-3 personas, 2-4 sprints).
+
+**Riesgo principal**  
+Sobreajuste a aumentaciones sintéticas que no representen escritura real de usuarios.
+
+---
+
+### 7.3 Largo plazo (6+ sprints)
+
+**Objetivo técnico**  
+Evolucionar de prototipo local a plataforma escalable con mejor capacidad predictiva y operación en producción.
+
+**Líneas de trabajo**
+- **Migración/benchmark a CNN**
+  - Diseñar experimento comparativo MLP vs CNN con mismo protocolo de evaluación.
+  - Mantener fallback a MLP durante transición para reducir riesgo operativo.
+- **Despliegue en nube**
+  - Contenerización, CI/CD y entorno administrado (por ejemplo, servicio web + almacenamiento gestionado).
+  - Instrumentar observabilidad de producción (logs estructurados, métricas, alertas).
+- **Cuentas de usuario y persistencia avanzada**
+  - Autenticación básica, historial de práctica y trazas por usuario.
+  - Modelo de datos preparado para analítica de progreso y personalización de feedback.
+
+**Cambio esperado en métricas**
+- Mejora significativa de accuracy global y especialmente en trazos complejos/ruidosos.
+- Mayor disponibilidad y menor tiempo de recuperación ante fallas en operación remota.
+- Mayor retención de usuarios gracias a historial y personalización.
+
+**Esfuerzo estimado**  
+**Alto** (3-5 personas, 6+ sprints).
+
+**Riesgo principal**  
+Incremento de complejidad técnica y de costos de operación sin una base de datos real suficientemente representativa.
+
+---
+
+### 7.4 Dependencias y orden recomendado
+
+1. **Primero: dataset real etiquetado y pipeline de calidad de datos**  
+   Sin datos reales (capturas del canvas correctamente etiquetadas), cualquier mejora de modelo tendrá baja validez externa.
+2. **Segundo: baseline robusta del MLP (métricas + calibración + multi-dispositivo)**  
+   Permite medir el punto de partida real y evita comparar arquitecturas con protocolos inconsistentes.
+3. **Tercero: comparación formal MLP vs CNN**  
+   Solo cuando exista dataset real estable y baseline del MLP, para estimar ganancia real de migrar a CNN.
+4. **Cuarto: despliegue en nube y cuentas de usuario**  
+   Recomendado después de validar calidad predictiva y operación básica, para escalar con menor riesgo.
+
+**Dependencia crítica explícita:** primero consolidar **dataset real etiquetado**, luego ejecutar comparación **MLP vs CNN** bajo el mismo protocolo experimental.
 
 ---
 
