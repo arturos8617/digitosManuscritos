@@ -22,9 +22,12 @@ templates.npz
 
 ## Recolectar muestras reales del canvas
 1. Ejecuta backend y frontend.
-2. Dibuja el número objetivo en la app React.
+2. Selecciona el modo de ejercicio (números / vocales minúsculas / vocales mayúsculas).
+3. Dibuja el símbolo objetivo en la app React.
 3. Si el trazo representa bien al objetivo, presiona **Guardar muestra**.
-4. Las muestras se guardan en `canvas_samples/<digito>/*.png`.
+4. Las muestras se guardan en:
+   - `canvas_samples/<digito>/*.png` para modo números (compatibilidad con entrenamiento actual).
+   - `canvas_samples/<modo>/<etiqueta>/*.png` para vocales.
 
 ## Reentrenar la misma MLP con muestras reales
 python -m src.mlp.train --epochs 15 --hidden 256 --lr 0.1 --canvas-dir canvas_samples --canvas-repeat 3
@@ -51,7 +54,7 @@ Luego abre en el navegador:
 http://localhost:5173
 
 ## Uso del sistema
-El sistema mostrará un dígito objetivo (por ejemplo: “Escribe el número 7”).
+El sistema mostrará un símbolo objetivo según el modo de práctica (por ejemplo: “Escribe el número 7” o “Escribe la vocal a”).
 
 El usuario dibuja el dígito en el canvas.
 
@@ -79,4 +82,3 @@ Puede presionar Nuevo número para continuar practicando.
 - [07 Compatibilidad](docs/07_compatibilidad.md)
 - [08 UX](docs/08_ux.md)
 - [10 Mantenimiento y soporte](docs/10_mantenimiento_soporte.md)
-
