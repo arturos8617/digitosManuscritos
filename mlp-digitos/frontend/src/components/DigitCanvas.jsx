@@ -6,7 +6,7 @@ const CANVAS_H = 224;
 const OUT_W = 28;
 const OUT_H = 28;
 
-export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
+export default function DigitCanvas({ onStatus, onResult, targetSymbol, mode }) {
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -164,15 +164,27 @@ export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
       return;
     }
 
-    const resp = await fetch("/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image_b64: b64, target_digit: targetDigit }),
-    });
+    try {
+      const resp = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_b64: b64,
+          mode,
+          target_symbol: targetSymbol,
+          target_digit: mode === "digits" ? Number(targetSymbol) : null,
+        }),
+      });
 
-    const json = await resp.json();
-    onResult(json);
-    onStatus?.("Listo");
+      const json = await resp.json();
+      if (!resp.ok) {
+        throw new Error(json.detail || "No se pudo predecir");
+      }
+      onResult(json);
+      onStatus?.("Listo");
+    } catch (err) {
+      onStatus?.(`Error de predicción: ${err.message}`);
+    }
   }
 
   async function saveSample() {
@@ -189,7 +201,7 @@ export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
       const resp = await fetch("/samples/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_b64: b64, label: targetDigit }),
+        body: JSON.stringify({ image_b64: b64, mode, label: targetSymbol }),
       });
 
       const json = await resp.json();
@@ -197,7 +209,7 @@ export default function DigitCanvas({ onStatus, onResult, targetDigit }) {
         throw new Error(json.detail || "No se pudo guardar la muestra");
       }
 
-      onStatus?.(`Muestra guardada para ${json.label}`);
+      onStatus?.(`Muestra guardada para ${json.label} (${json.mode})`);
     } catch (err) {
       onStatus?.(`Error al guardar: ${err.message}`);
     } finally {
