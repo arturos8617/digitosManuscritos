@@ -35,6 +35,28 @@ python -m src.mlp.train --epochs 15 --hidden 256 --lr 0.1 --canvas-dir canvas_sa
 - `--canvas-dir`: directorio con muestras reales por carpeta (`0` a `9`).
 - `--canvas-repeat`: cuánto peso tendrán esas muestras al mezclarlas con MNIST.
 
+## Entrenar vocales desde muestras reales (sin MNIST)
+Cuando ya tienes muestras por letra (por ejemplo 300 por clase), entrena un modelo por modo:
+
+### Minúsculas (`a,e,i,o,u`)
+python -m src.mlp.train_symbols \
+  --samples-dir canvas_samples/vowels_lower \
+  --labels a,e,i,o,u \
+  --weights-out weights_vowels_lower.npz \
+  --templates-out templates_vowels_lower.npz \
+  --epochs 25 --hidden 128 --lr 0.05 --batch 64
+
+### Mayúsculas (`A,E,I,O,U`)
+python -m src.mlp.train_symbols \
+  --samples-dir canvas_samples/vowels_upper \
+  --labels A,E,I,O,U \
+  --weights-out weights_vowels_upper.npz \
+  --templates-out templates_vowels_upper.npz \
+  --epochs 25 --hidden 128 --lr 0.05 --batch 64
+
+Al terminar, reinicia el backend:
+uvicorn src.server.server:app --reload --port 8000
+
 ## Evaluación
 python -m src.mlp.eval --weights weights.npz
 
