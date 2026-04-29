@@ -75,6 +75,44 @@ def load_canvas_samples(samples_dir: str | os.PathLike, dtype=np.float32) -> tup
     return X, y
 
 
+def load_symbol_samples(
+    samples_dir: str | os.PathLike,
+    labels: list[str],
+    dtype=np.float32
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Carga muestras por etiqueta de texto.
+    Estructura esperada:
+      samples_dir/
+        a/*.png
+        e/*.png
+        ...
+    o cualquier lista de labels definida por el usuario.
+    """
+    root = Path(samples_dir)
+    if not root.exists():
+        raise FileNotFoundError(f'No existe el directorio de muestras: {root}')
+
+    X_list: list[np.ndarray] = []
+    y_list: list[int] = []
+
+    for class_idx, label in enumerate(labels):
+        label_dir = root / str(label)
+        if not label_dir.is_dir():
+            raise FileNotFoundError(f'No existe carpeta para etiqueta "{label}": {label_dir}')
+        for img_path in sorted(label_dir.glob('*.png')):
+            with Image.open(img_path) as img:
+                X_list.append(preprocess_pil_for_mlp(img).astype(dtype))
+            y_list.append(class_idx)
+
+    if not X_list:
+        raise RuntimeError(f'No se encontraron PNGs válidos en {root}')
+
+    X = np.stack(X_list, axis=0).astype(dtype)
+    y = np.asarray(y_list, dtype=np.int64)
+    return X, y
+
+
 def load_mnist(normalize: bool = True, dtype=np.float32, seed: int = 42):
     rng = np.random.default_rng(seed)
     X, y = None, None
