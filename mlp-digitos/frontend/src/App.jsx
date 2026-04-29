@@ -126,7 +126,7 @@ export default function App() {
           ) : (
             <div>
               <div style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>
-                {result.digit}
+                {result.symbol ?? result.digit ?? "—"}
               </div>
 
               <div style={{ marginBottom: 6 }}>
