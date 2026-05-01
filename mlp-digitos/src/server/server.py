@@ -7,15 +7,58 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from .infer import Inference
 from .store import Store
-from typing import Optional
+from typing import Optional, Literal
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent  # .../src
 CLIENT_DIR = ROOT / "client"
 WEIGHTS_PATH = ROOT.parent / "weights.npz"  # repo root/weights.npz
 DB_PATH = ROOT.parent / "logs.db"
 SAMPLES_DIR = ROOT.parent / "canvas_samples"
+WEIGHTS_PATHS = {
+    "digits": ROOT.parent / "weights.npz",
+    "vowels_lower": ROOT.parent / "weights_vowels_lower.npz",
+    "vowels_upper": ROOT.parent / "weights_vowels_upper.npz",
+}
+TEMPLATES_PATHS = {
+    "digits": ROOT.parent / "templates.npz",
+    "vowels_lower": ROOT.parent / "templates_vowels_lower.npz",
+    "vowels_upper": ROOT.parent / "templates_vowels_upper.npz",
+}
+MODE_LABELS = {
+    "digits": [str(i) for i in range(10)],
+    "vowels_lower": ["a", "e", "i", "o", "u"],
+    "vowels_upper": ["A", "E", "I", "O", "U"],
+}
 
 app = FastAPI()
+
+SYMBOL_HINTS = {
+    "a": "Intenta cerrar más la parte redonda de la letra.",
+    "e": "Intenta marcar mejor la línea del centro.",
+    "U": "Hazla más alta y con ambos lados más parejos.",
+}
+
+
+def build_feedback(expected: str | None, predicted: str, confidence: float, score: float | None):
+    if expected is None:
+        return None, None
+
+    match = (predicted == expected)
+    hint = SYMBOL_HINTS.get(expected, "Haz el trazo más grande, claro y centrado.")
+    score_value = score if score is not None else 0.0
+
+    if match:
+        if score is not None and score_value >= 88 and confidence >= 0.80:
+            return True, "¡Excelente! Lo escribiste muy claro."
+        if score is not None and score_value >= 75:
+            return True, "¡Muy bien! Casi perfecto. Intenta centrarlo un poco más."
+        return True, f"¡Correcto! Buen intento. Para mejorar: {hint}"
+
+    if confidence >= 0.85:
+        return False, f"Se parece a otra letra. Si querías '{expected}', {hint}"
+    if score is not None and score_value >= 65:
+        return False, f"¡Vas cerca! Si querías '{expected}', {hint}"
+    return False, "Buen intento. Repite más grande, con trazo continuo y centrado."
 
 # (Optional) Allow cross-origin (harmless even if serving same origin)
 app.add_middleware(
@@ -25,60 +68,74 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-inf = Inference(str(WEIGHTS_PATH))
+infer_by_mode = {}
+for mode, path in WEIGHTS_PATHS.items():
+    if path.exists():
+        infer_by_mode[mode] = Inference(
+            str(path),
+            str(TEMPLATES_PATHS[mode]),
+            labels=MODE_LABELS[mode],
+        )
 store = Store(str(DB_PATH), str(SAMPLES_DIR))
 
 class PredictRequest(BaseModel):
     image_b64: str
+    mode: Literal["digits", "vowels_lower", "vowels_upper"] = "digits"
+    target_symbol: Optional[str] = None
     target_digit: Optional[int] = None
 
 
 class SaveSampleRequest(BaseModel):
     image_b64: str
-    label: int
+    mode: Literal["digits", "vowels_lower", "vowels_upper"] = "digits"
+    label: str | int
 
 
 @app.post('/predict')
 async def predict(req: PredictRequest):
     t0 = time.time()
     print("\n === Nueva Peticion ===")
-    print("Target Digit: ", req.target_digit)
+    print("Mode:", req.mode)
+    print("Target symbol: ", req.target_symbol)
+    print("Target digit: ", req.target_digit)
     print("Longitud imagen base64:", len(req.image_b64))
 
     try:
-        digit, conf, score = inf.predict_from_base64(req.image_b64, req.target_digit)
+        inf = infer_by_mode.get(req.mode)
+        if inf is None:
+            raise HTTPException(
+                status_code=503,
+                detail=f"No hay pesos entrenados para el modo '{req.mode}'.",
+            )
+        target_symbol = req.target_symbol
+        if target_symbol is None and req.target_digit is not None and req.mode == "digits":
+            target_symbol = str(req.target_digit)
+        symbol, conf, score = inf.predict_from_base64(req.image_b64, target_symbol)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     latency = (time.time() - t0) * 1000.0
-    print("Prediccion: ", digit)
+    print("Prediccion: ", symbol)
     print("Prediccion: ", conf)
     print("Prediccion: ", score)
     print("Prediccion: ", latency)
     print("\n === FIN Peticion ===")
 
-    store.insert(digit, conf, latency)
+    store.insert(req.mode, symbol, conf, latency)
 
-    # Feedback mínimo (MVP) basado en target + score + conf
-    feedback = None
-    match = None
-    if req.target_digit is not None:
-        match = (digit == req.target_digit)
-        if not match:
-            feedback = "Incorrecto. Intenta de nuevo y haz el dígito más grande y centrado."
-        else:
-            # score suele reflejar “qué tan parecido” al estilo plantilla
-            if score is not None and score >= 85:
-                feedback = "¡Muy bien! Se parece mucho."
-            elif score is not None and score >= 70:
-                feedback = "Bien, pero puedes mejorar. Intenta hacerlo más centrado."
-            else:
-                feedback = "Correcto, pero la forma puede mejorar. Hazlo más claro y completo."
+    # Feedback educativo por niveles
+    expected = target_symbol
+    match, feedback = build_feedback(expected, symbol, conf, score)
 
     return {
-        "digit": digit,
+        "digit": int(symbol) if req.mode == "digits" and symbol.isdigit() else None,
+        "symbol": symbol,
         "confidence": conf,
         "latency_ms": latency,
+        "mode": req.mode,
+        "target_symbol": expected,
         "target_digit": req.target_digit,
         "match": match,
         "similarity_score": score,
@@ -88,17 +145,20 @@ async def predict(req: PredictRequest):
 
 @app.post('/samples/save')
 async def save_sample(req: SaveSampleRequest):
-    if not 0 <= req.label <= 9:
-        raise HTTPException(status_code=400, detail='label debe estar entre 0 y 9')
+    allowed = set(MODE_LABELS[req.mode])
+    label = str(req.label)
+    if label not in allowed:
+        raise HTTPException(status_code=400, detail=f"label inválida para {req.mode}. Permitidas: {sorted(allowed)}")
 
     try:
-        saved_path = store.save_sample(req.image_b64, req.label)
+        saved_path = store.save_sample(req.image_b64, req.mode, label)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     return {
         "ok": True,
-        "label": req.label,
+        "mode": req.mode,
+        "label": label,
         "saved_path": saved_path,
     }
 
