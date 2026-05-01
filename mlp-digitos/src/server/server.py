@@ -125,9 +125,22 @@ async def predict(req: PredictRequest):
 
     store.insert(req.mode, symbol, conf, latency)
 
-    # Feedback educativo por niveles
+    # Feedback mínimo (MVP) basado en target + score + conf
+    feedback = None
+    match = None
     expected = target_symbol
-    match, feedback = build_feedback(expected, symbol, conf, score)
+    if expected is not None:
+        match = (symbol == expected)
+        if not match:
+            feedback = "Incorrecto. Intenta de nuevo y haz el trazo más grande y centrado."
+        else:
+            # score suele reflejar “qué tan parecido” al estilo plantilla
+            if score is not None and score >= 85:
+                feedback = "¡Muy bien! Se parece mucho."
+            elif score is not None and score >= 70:
+                feedback = "Bien, pero puedes mejorar. Intenta hacerlo más centrado."
+            else:
+                feedback = "Correcto, pero la forma puede mejorar. Hazlo más claro y completo."
 
     return {
         "digit": int(symbol) if req.mode == "digits" and symbol.isdigit() else None,

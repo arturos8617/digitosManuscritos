@@ -1,0 +1,8 @@
+mlp-digitos/canvas_samples/
+mlp-digitos/src/mlp/__pycache__/
+mlp-digitos/src/mlp/__pycache__/data.cpython-310.pyc
+mlp-digitos/logs.db
+mlp-digitos/templates_vowels_lower.npz
+mlp-digitos/weights_vowels_lower.npz
+mlp-digitos/weights_vowels_upper.npz
+mlp-digitos/templates_vowels_upper.npz
