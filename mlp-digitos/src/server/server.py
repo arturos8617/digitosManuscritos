@@ -32,6 +32,34 @@ MODE_LABELS = {
 
 app = FastAPI()
 
+SYMBOL_HINTS = {
+    "a": "Intenta cerrar más la parte redonda de la letra.",
+    "e": "Intenta marcar mejor la línea del centro.",
+    "U": "Hazla más alta y con ambos lados más parejos.",
+}
+
+
+def build_feedback(expected: str | None, predicted: str, confidence: float, score: float | None):
+    if expected is None:
+        return None, None
+
+    match = (predicted == expected)
+    hint = SYMBOL_HINTS.get(expected, "Haz el trazo más grande, claro y centrado.")
+    score_value = score if score is not None else 0.0
+
+    if match:
+        if score is not None and score_value >= 88 and confidence >= 0.80:
+            return True, "¡Excelente! Lo escribiste muy claro."
+        if score is not None and score_value >= 75:
+            return True, "¡Muy bien! Casi perfecto. Intenta centrarlo un poco más."
+        return True, f"¡Correcto! Buen intento. Para mejorar: {hint}"
+
+    if confidence >= 0.85:
+        return False, f"Se parece a otra letra. Si querías '{expected}', {hint}"
+    if score is not None and score_value >= 65:
+        return False, f"¡Vas cerca! Si querías '{expected}', {hint}"
+    return False, "Buen intento. Repite más grande, con trazo continuo y centrado."
+
 # (Optional) Allow cross-origin (harmless even if serving same origin)
 app.add_middleware(
     CORSMiddleware,
